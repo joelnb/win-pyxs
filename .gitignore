@@ -1,0 +1,12 @@
+# Python build files
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# Tox files
+.tox/
+
+# Setuptools cached eggs
+.eggs/
