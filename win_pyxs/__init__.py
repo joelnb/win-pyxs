@@ -3,9 +3,9 @@ An implementation of pyxs.Connection for the Windows versions of the Xen PV
 drivers.
 """
 
-__all__ = []
-
 from __future__ import print_function
+
+__all__ = []
 
 import sys
 
