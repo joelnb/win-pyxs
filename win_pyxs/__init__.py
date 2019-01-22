@@ -123,3 +123,9 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
 
     def disconnect(self, silent=True):
         self.session = None
+
+
+if __name__ == "__main__":
+    con = XenBusConnectionWinWINPV()
+    router = pyxs.Router(con)
+    client = pyxs.Client(router=router)
