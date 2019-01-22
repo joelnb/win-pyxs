@@ -12,11 +12,12 @@ import sys
 import wmi
 
 import pyxs
+import pyxs.connection
 
 sys.coinit_flags = 0
 
 
-class XenBusConnectionWinWINPV(FileDescriptorConnection):
+class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
     session = None
     response_packet = None
 
