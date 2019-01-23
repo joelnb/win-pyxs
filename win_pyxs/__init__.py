@@ -12,6 +12,7 @@ import sys
 import backports.socketpair
 import pyxs
 import pyxs.connection
+from pyxs._internal import Op
 import wmi
 
 sys.coinit_flags = 0
@@ -131,3 +132,4 @@ if __name__ == "__main__":
     con = XenBusConnectionWinWINPV()
     router = pyxs.Router(con)
     client = pyxs.Client(router=router)
+    print(client.list("vm"))
