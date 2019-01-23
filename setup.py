@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os.path
+
 from setuptools import setup
 
 README = ''
@@ -10,7 +11,8 @@ if os.path.exists('README.md'):
         README = readme_file.read()
 
 REQUIREMENTS = [
-    'pyxs'
+    'pyxs',
+    'WMI',
 ]
 
 TEST_REQUIREMENTS = [

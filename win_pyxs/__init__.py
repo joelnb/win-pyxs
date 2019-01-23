@@ -9,12 +9,14 @@ __all__ = []
 
 import sys
 
-import wmi
-
+import backports.socketpair
 import pyxs
 import pyxs.connection
+import wmi
 
 sys.coinit_flags = 0
+
+_wmiSession = None
 
 
 class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
