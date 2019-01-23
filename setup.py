@@ -9,7 +9,9 @@ if os.path.exists('README.md'):
     with open('README.md') as readme_file:
         README = readme_file.read()
 
-REQUIREMENTS = []
+REQUIREMENTS = [
+    'pyxs'
+]
 
 TEST_REQUIREMENTS = [
     'mock',
