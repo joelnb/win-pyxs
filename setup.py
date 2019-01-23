@@ -45,5 +45,10 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
     test_suite='tests',
-    tests_require=TEST_REQUIREMENTS
+    tests_require=TEST_REQUIREMENTS,
+    extras_requires={
+        ':sys_platform == "win32" and (python_version < "3.5")': [
+            'backports.socketpair',
+        ]
+    }
 )
