@@ -12,6 +12,7 @@ if os.path.exists('README.md'):
 
 REQUIREMENTS = [
     'pyxs',
+    'six',
     'WMI',
 ]
 
