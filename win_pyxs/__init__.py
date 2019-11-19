@@ -7,12 +7,19 @@ from __future__ import print_function
 
 __all__ = []
 
+import socket
 import sys
+from time import sleep
+
+try:
+    from Queue import Queue
+except ImportError:
+    from queue import Queue
 
 import backports.socketpair
 import pyxs
 import pyxs.connection
-from pyxs._internal import Op, Packet
+from pyxs._internal import Op, Packet, NUL
 import wmi
 
 sys.coinit_flags = 0
@@ -20,15 +27,25 @@ sys.coinit_flags = 0
 _WMI_SESSION = None
 
 
-class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
-    session = None
-    response_packet = None
-
+class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
     def __init__(self):
-        pass
+        self.session = None
+        self.response_packets = Queue()
+
+        # A socket pair which can be used to mimic the default pyxs behaviour
+        # of returning a fileno which can be slected on to check when data is
+        # available
+        self.r_terminator, self.w_terminator = socket.socketpair()
 
     def __copy__(self):
         return self.__class__(self.path)
+
+    @property
+    def is_connected(self):
+        return self.session is not None
+
+    def fileno(self):
+        return self.r_terminator.fileno()
 
     def connect(self, retry=0):
         global _WMI_SESSION
@@ -117,19 +134,37 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
                 "Unsupported XenStore Action ({x})".format(x=packet.op)
             )
 
-        self.response_packet = Packet(
+        self.response_packets.put(Packet(
             packet.op, result, packet.rq_id, packet.tx_id
-        )
+        ))
+
+        # Notify that data is available
+        self.w_terminator.sendall(NUL)
 
     def recv(self):
-        return self.response_packet
+        self.r_terminator.recv(1)
+        return self.response_packets.get(False)
 
-    def disconnect(self, silent=True):
+    def close(self, silent=True):
+        self.w_terminator.sendall(NUL)
+
+    def __del__(self):
+        if self.session:
+            print('Ending session')
+            self.session.EndSession()
+
         self.session = None
+
+        self.r_terminator.close()
+        self.w_terminator.close()
 
 
 if __name__ == "__main__":
-    con = XenBusConnectionWinWINPV()
+    con = XenBusConnectionWinPV()
     router = pyxs.Router(con)
-    client = pyxs.Client(router=router)
-    print(client.list("vm"))
+    with pyxs.Client(router=router) as client:
+        my_uuid = client.read("vm")
+        print('My UUID:', my_uuid)
+        my_domid = client.read("domid")
+        print('My DomID:', my_domid)
+        print(client.list("/local/domain/{}".format(my_domid)))
