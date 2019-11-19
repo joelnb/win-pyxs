@@ -35,6 +35,8 @@ WMI_QUERY_RETRY_DELAY = 0.5
 
 class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
     def __init__(self, xs_session_name="PyxsSession"):
+        super(XenBusConnectionWinPV, self).__init__()
+
         self.session = None
         self.session_id = None
         self.session_name = xs_session_name
