@@ -21,3 +21,9 @@ class UnknownSessionError(WinPyXSError):
     if something removes the session (via the WMI interface) while your program
     is running.
     """
+
+
+class GPLPVDeviceOpenError(WinPyXSError):
+    """
+    Exception raised by the GPLPV connection when opening the device fails.
+    """
