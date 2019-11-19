@@ -38,7 +38,7 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         self.r_terminator, self.w_terminator = socket.socketpair()
 
     def __copy__(self):
-        return self.__class__(self.path)
+        return self.__class__()
 
     @property
     def is_connected(self):
@@ -134,9 +134,9 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
                 "Unsupported XenStore Action ({x})".format(x=packet.op)
             )
 
-        self.response_packets.put(Packet(
-            packet.op, result, packet.rq_id, packet.tx_id
-        ))
+        self.response_packets.put(
+            Packet(packet.op, result, packet.rq_id, packet.tx_id)
+        )
 
         # Notify that data is available
         self.w_terminator.sendall(NUL)
@@ -149,6 +149,8 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         self.w_terminator.sendall(NUL)
 
     def __del__(self):
+        # It is not possible to call EndSession from the close method because
+        # that is called by the router which runs in a different thread
         if self.session:
             print('Ending session')
             self.session.EndSession()
@@ -159,7 +161,7 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         self.w_terminator.close()
 
 
-if __name__ == "__main__":
+def _main():
     con = XenBusConnectionWinPV()
     router = pyxs.Router(con)
     with pyxs.Client(router=router) as client:
@@ -168,3 +170,7 @@ if __name__ == "__main__":
         my_domid = client.read("domid")
         print('My DomID:', my_domid)
         print(client.list("/local/domain/{}".format(my_domid)))
+
+
+if __name__ == "__main__":
+    _main()
