@@ -58,7 +58,9 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
                     wmi_connect_retry=(wmi_connect_retry - 1)
                 )
 
-            six.raise_from(pyxs.PyXSError, exc)
+            six.raise_from(
+                pyxs.PyXSError("Initialising WMI connection failed"), exc
+            )
 
         if self.session_id is None:
             self.session_id = xenstore_base.AddSession(Id=self.session_name)[0]
@@ -75,7 +77,9 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
             try:
                 sessions = wmi_session.query(wmi_query)
             except Exception as exc:
-                six.raise_from(pyxs.PyXSError, exc)
+                six.raise_from(
+                    pyxs.PyXSError("Unable to query for WMI session"), exc
+                )
 
         try:
             return sessions[0]
@@ -135,26 +139,38 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
             try:
                 result = self.session.GetValue(packet.payload)[0]
             except wmi.x_wmi as exc:
-                six.raise_from(pyxs.PyXSError, exc)
+                six.raise_from(
+                    pyxs.PyXSError("session.GetValue call failed"), exc
+                )
         elif packet.op == Op.WRITE:
+            payload = packet.payload.split('\x00', 1)
+
             try:
-                payload = packet.payload.split('\x00', 1)
                 self.session.SetValue(payload[0], payload[1])
             except wmi.x_wmi as exc:
-                six.raise_from(pyxs.PyXSError, exc)
+                six.raise_from(
+                    pyxs.PyXSError("session.SetValue call failed"), exc
+                )
+
             result = "OK"
         elif packet.op == Op.RM:
             try:
                 self.session.RemoveValue(packet.payload)[0]
             except wmi.x_wmi as exc:
-                six.raise_from(pyxs.PyXSError, exc)
+                six.raise_from(
+                    pyxs.PyXSError("session.RemoveValue call failed"), exc
+                )
+
             result = "OK"
         elif packet.op == Op.DIRECTORY:
             try:
                 result = self.session.GetChildren(packet.payload)[0].childNodes
-                result = "\x00".join(result)
             except wmi.x_wmi as exc:
-                six.raise_from(pyxs.PyXSError, exc)
+                six.raise_from(
+                    pyxs.PyXSError("session.GetChildren call failed"), exc
+                )
+
+            result = "\x00".join(result)
         else:
             raise Exception(
                 "Unsupported XenStore Action ({x})".format(x=packet.op)
