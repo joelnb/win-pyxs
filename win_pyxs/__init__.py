@@ -34,6 +34,11 @@ WMI_QUERY_RETRY_DELAY = 0.5
 
 
 class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
+    """
+    An implementation of a pyxs connection which uses the WMI interface
+    provided by the WinPV drivers to communicate with the xenstore.
+    """
+
     def __init__(self, xs_session_name="PyxsSession"):
         super(XenBusConnectionWinPV, self).__init__()
 
@@ -95,9 +100,18 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
 
     @property
     def is_connected(self):
+        """
+        Return whether this connection is currently active & connected to
+        xenstore via the XenProjectXenStoreSession.
+        """
         return self.session is not None
 
     def fileno(self):
+        """
+        Return the fileno from the reader half of the socket pair. This way
+        when selecting on this object it will return when data becomes
+        available.
+        """
         return self.r_terminator.fileno()
 
     def connect(self, wmi_connect_retry=20):
