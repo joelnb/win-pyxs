@@ -12,12 +12,12 @@ import sys
 import backports.socketpair
 import pyxs
 import pyxs.connection
-from pyxs._internal import Op
+from pyxs._internal import Op, Packet
 import wmi
 
 sys.coinit_flags = 0
 
-_wmiSession = None
+_WMI_SESSION = None
 
 
 class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
@@ -31,15 +31,15 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
         return self.__class__(self.path)
 
     def connect(self, retry=0):
-        global _wmiSession
+        global _WMI_SESSION
 
         # Create a WMI Session
         try:
-            if not _wmiSession or retry > 0:
-                _wmiSession = wmi.WMI(
+            if not _WMI_SESSION or retry > 0:
+                _WMI_SESSION = wmi.WMI(
                     moniker="//./root/wmi", find_classes=False
                 )
-            xenStoreBase = _wmiSession.XenProjectXenStoreBase()[0]
+            xenstore_base = _WMI_SESSION.XenProjectXenStoreBase()[0]
         except Exception:  # WMI can raise all sorts of exceptions
             if retry < 20:
                 sleep(5)
@@ -49,7 +49,7 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
                 raise pyxs.PyXSError, None, sys.exc_info()[2]
 
         try:
-            sessions = _wmiSession.query((
+            sessions = _WMI_SESSION.query((
                 "select * from XenProjectXenStoreSession where InstanceName"
                 " = 'Xen Interface\\Session_PyxsSession_0'"
             ))
@@ -58,7 +58,7 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
 
         if len(sessions) <= 0:
             session_name = "PyxsSession"
-            session_id = xenStoreBase.AddSession(Id=session_name)[0]
+            session_id = xenstore_base.AddSession(Id=session_name)[0]
 
             wmi_query = (
                 "select * from XenProjectXenStoreSession where SessionId"
@@ -66,12 +66,12 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
             ).format(id=session_id)
 
             try:
-                sessions = _wmiSession.query(wmi_query)
+                sessions = _WMI_SESSION.query(wmi_query)
             except Exception:
                 sleep(0.5)
 
                 try:
-                    sessions = _wmiSession.query(wmi_query)
+                    sessions = _WMI_SESSION.query(wmi_query)
                 except Exception:
                     raise pyxs.PyXSError, None, sys.exc_info()[2]
 
@@ -80,10 +80,10 @@ class XenBusConnectionWinWINPV(pyxs.connection.PacketConnection):
     # Emulate sending the packet directly to the XenStore interface
     # and store the result in response_packet
     def send(self, packet):
-        global _wmiSession
+        global _WMI_SESSION
 
         try:
-            if not _wmiSession or not self.session:
+            if not _WMI_SESSION or not self.session:
                 self.connect()
         except wmi.x_wmi:
             raise pyxs.PyXSError, None, sys.exc_info()[2]
