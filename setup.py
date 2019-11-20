@@ -11,6 +11,7 @@ if os.path.exists('README.md'):
         README = readme_file.read()
 
 REQUIREMENTS = [
+    'pywin32',
     'pyxs',
     'six',
     'WMI',

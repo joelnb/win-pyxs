@@ -27,3 +27,10 @@ class GPLPVDeviceOpenError(WinPyXSError):
     """
     Exception raised by the GPLPV connection when opening the device fails.
     """
+
+
+class GPLPVDriverError(WinPyXSError):
+    """
+    Exception raised by the GPLPV connection when it fails to learn the device
+    path used by the driver.
+    """

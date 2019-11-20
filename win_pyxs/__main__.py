@@ -10,10 +10,11 @@ from pprint import pprint
 import pyxs
 
 from win_pyxs import XenBusConnectionWinPV
+from win_pyxs.gplpv import XenBusConnectionWinGPLPV
 
 
 def _main():
-    con = XenBusConnectionWinPV()
+    con = XenBusConnectionWinGPLPV()
     router = pyxs.Router(con)
     with pyxs.Client(router=router) as client:
         my_uuid = client.read("vm")

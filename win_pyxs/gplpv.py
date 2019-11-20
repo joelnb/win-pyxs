@@ -15,16 +15,22 @@ from ctypes.wintypes import BYTE
 import six
 import wmi
 
-from .exceptions import GPLPVDeviceOpenError
+import pyxs.connection
+
+from .exceptions import GPLPVDeviceOpenError, GPLPVDriverError
 
 sys.coinit_flags = 0
 
 _winDevicePath = None
 
 
-class XenBusConnectionWinGPLPV(FileDescriptorConnection):
+class XenBusConnectionWinGPLPV(pyxs.connection.PacketConnection):
     def __init__(self):
         global _winDevicePath
+
+        super(XenBusConnectionWinGPLPV, self).__init__()
+
+        self.fd = None
 
         # Once the windows device path is learned once reuse it otherwise
         # ctypes.POINTER() for the same structure leaks memory. Although
@@ -58,7 +64,7 @@ class XenBusConnectionWinGPLPV(FileDescriptorConnection):
         # Return code checkers
         def ValidHandle(value, func, arguments):
             if value == 0:
-                raise WindowsDriverError(str(ctypes.WinError()))
+                raise GPLPVDriverError(str(ctypes.WinError()))
             return value
 
         # Some structures used by the Windows API
@@ -137,12 +143,12 @@ class XenBusConnectionWinGPLPV(FileDescriptorConnection):
         sdid.cbSize = ctypes.sizeof(sdid)
         if not SetupDiEnumDeviceInterfaces(handle, NULL, ctypes.byref(GUID_XENBUS_IFACE), 0, ctypes.byref(sdid)):
             if ctypes.GetLastError() != ERROR_NO_MORE_ITEMS:
-                    raise WindowsDriverError(str(ctypes.WinError()))
+                    raise GPLPVDriverError(str(ctypes.WinError()))
 
         buf_len = DWORD()
         if not SetupDiGetDeviceInterfaceDetail(handle, ctypes.byref(sdid), NULL, 0, ctypes.byref(buf_len), NULL):
             if ctypes.GetLastError() != ERROR_INSUFFICIENT_BUFFER:
-                raise WindowsDriverError(str(ctypes.WinError()))
+                raise GPLPVDriverError(str(ctypes.WinError()))
 
         # We didn't know how big to make the structure until buf_len is assigned...
         class SP_DEVICE_INTERFACE_DETAIL_DATA_A(ctypes.Structure):
@@ -157,8 +163,9 @@ class XenBusConnectionWinGPLPV(FileDescriptorConnection):
         sdidd = SP_DEVICE_INTERFACE_DETAIL_DATA_A()
         sdidd.cbSize = ctypes.sizeof(ctypes.POINTER(SP_DEVICE_INTERFACE_DETAIL_DATA_A))
         if not SetupDiGetDeviceInterfaceDetail(handle, ctypes.byref(sdid), ctypes.byref(sdidd), buf_len, NULL, NULL):
-            raise WindowsDriverError(str(ctypes.WinError()))
-        self.path = ""+sdidd.DevicePath
+            raise GPLPVDriverError(str(ctypes.WinError()))
+
+        self.path = "" + sdidd.DevicePath
 
         SetupDiDestroyDeviceInfoList(handle)
 
