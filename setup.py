@@ -23,9 +23,10 @@ TEST_REQUIREMENTS = [
 
 setup(
     name='win_pyxs',
-    version='0.1.0',
+    version='0.1.1',
     description='Windows compatibility for pyxs',
     long_description=README,
+    long_description_content_type='text/markdown',
     author='Joel Noyce Barnham',
     author_email='joelnbarnham@gmail.com',
     url='https://github.com/joelnb/win-pyxs',
