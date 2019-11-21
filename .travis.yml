@@ -1,11 +1,13 @@
 language: python
 python:
+- '2.7'
+- '3.4'
 - '3.7'
 cache: pip
 install:
 - pip install -r requirements.txt
 script:
-- echo "Running script"
+- python -m compileall win_pyxs
 deploy:
   provider: pypi
   user: __token__
