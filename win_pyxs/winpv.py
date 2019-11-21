@@ -18,7 +18,7 @@ try:
 except ImportError:
     from queue import Queue
 
-import backports.socketpair
+import backports.socketpair  # pylint: disable=W0611
 import pythoncom
 import six
 import wmi

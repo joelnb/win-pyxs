@@ -9,20 +9,16 @@ from __future__ import print_function
 __all__ = ['XenBusConnectionGPLPV']
 
 import ctypes
-from ctypes.wintypes import HANDLE
 from ctypes.wintypes import BOOL
 from ctypes.wintypes import HWND
 from ctypes.wintypes import DWORD
 from ctypes.wintypes import WORD
-from ctypes.wintypes import LONG
 from ctypes.wintypes import ULONG
-from ctypes.wintypes import LPCSTR
-from ctypes.wintypes import HKEY
 from ctypes.wintypes import BYTE
 import logging
 import socket
 
-import backports.socketpair
+import backports.socketpair  # pylint: disable=W0611
 import six
 from win32file import CreateFile, CloseHandle, ReadFile, WriteFile
 from win32file import (
@@ -34,7 +30,7 @@ from pyxs._internal import NUL
 
 from .exceptions import GPLPVDeviceOpenError, GPLPVDriverError
 
-_winDevicePath = None
+_WIN_DEVICE_PATH = None
 
 
 class XenBusConnectionGPLPV(pyxs.connection.PacketConnection):
@@ -82,7 +78,7 @@ class XenBusTransportGPLPV(object):
     """
 
     def __init__(self):
-        global _winDevicePath
+        global _WIN_DEVICE_PATH
 
         self._logger = logging.getLogger(
             __name__ + '.' + self.__class__.__name__
@@ -100,8 +96,8 @@ class XenBusTransportGPLPV(object):
         # ctypes.POINTER() for the same structure leaks memory. Although
         # this can be reclaimed with ctypes._reset_cache() this is poking
         # at the internals of ctypes which doesn't seem to be a good idea.
-        if _winDevicePath:
-            self.path = _winDevicePath
+        if _WIN_DEVICE_PATH:
+            self.path = _WIN_DEVICE_PATH
             self._open_device()
             return
 
@@ -127,7 +123,7 @@ class XenBusTransportGPLPV(object):
         PULONG = ctypes.POINTER(ULONG)
 
         # Return code checkers
-        def ValidHandle(value, func, arguments):
+        def ValidHandle(value, _func, _arguments):
             if value == 0:
                 raise GPLPVDriverError(str(ctypes.WinError()))
             return value
@@ -261,7 +257,7 @@ class XenBusTransportGPLPV(object):
 
         SetupDiDestroyDeviceInfoList(handle)
 
-        _winDevicePath = self.path
+        _WIN_DEVICE_PATH = self.path
 
         self._open_device()
 
