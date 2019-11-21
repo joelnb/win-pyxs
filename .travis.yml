@@ -1,0 +1,16 @@
+language: python
+python:
+- '3.7'
+cache: pip
+install:
+- pip install -r requirements.txt
+script:
+- echo "Running script"
+deploy:
+  provider: pypi
+  user: __token__
+  password:
+    secure: aP1qHbC9jeUlyt0/iB3i9/Aj5qpByGq5umNcDzUBXZv1DlfcNj4ES1KU9L9mwwJPHtl6512TAuzYtjfHzJFTKUJhah7iTiaUxWC76IM5Mzkztr3aUEv4qGyT7JGr6yMduKj7Ceu61Fk68++nG6J0iY8aDKxjFbQI/rDa4cr6SJhPT4hdva9dzDDzcia3oQwqY4SJ9JT1gF9hAHPcb6jqmoS0dgSPSgd8kvY+oCIiyaG8uiLe42wsP9iG1avDCTkDwp6bI64hnfRysGbKknVxFokWZoQL0ijXExUAAg+BYtnicV22lNlpQ0e5VVGcpDKm55+c0CJsXFxMhMbkbY10ADcM0S8VY9+vuxr9/AOC2PaosCpqkiGRC2/fhI214N+7+J6kPzyPSocJP7mKpBwCAXKUtFSrUrUeF/qfa/omobeVqCanCEjJc8XRONrLg4nzIEwkT6e5MN+GPlhEwec7J0DpMAE4Ul78s0P8ow73G9X6x3FCyZQ7FoUi2+nUZcUAAcyafJ6ULjvmwwHBTeyJFrnNulvuX5xBkhObGz6+3iHYi/CM0fsAVvuGI8aO+KhCWyWzk01odBQ/yDSy8lHIw4GpSj8GrAGNGTmXTmUSaazHZSYref1fpKB06AZz1GiIvPyXu1u0kNp448TVsm6FAqgnB5WkfrX2fgFKOjyf3u8=
+  distributions: sdist bdist_wheel
+  on:
+    tags: true
