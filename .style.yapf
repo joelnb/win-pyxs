@@ -7,3 +7,4 @@ spaces_around_power_operator = true
 continuation_indent_width = 4
 split_before_bitwise_operator = true
 split_before_logical_operator = true
+blank_line_before_nested_class_or_def = true

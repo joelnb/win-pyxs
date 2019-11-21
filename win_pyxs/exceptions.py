@@ -5,7 +5,9 @@ pyxs.
 """
 
 __all__ = [
-    'WinPyXSError', 'UnknownSessionError', 'GPLPVDeviceOpenError',
+    'WinPyXSError',
+    'UnknownSessionError',
+    'GPLPVDeviceOpenError',
     'GPLPVDriverError',
 ]
 

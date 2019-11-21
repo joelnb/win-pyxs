@@ -7,7 +7,7 @@ cache: pip
 install:
 - pip install -r requirements.txt
 script:
-- python -m compileall win_pyxs
+- yapf -d --recursive setup.py win_pyxs
 deploy:
   provider: pypi
   user: __token__
