@@ -1,6 +1,9 @@
+import logging
 import os
+import socket
 import sys
 
+import backports.socketpair
 import ctypes
 from ctypes.wintypes import HANDLE
 from ctypes.wintypes import BOOL
@@ -13,9 +16,12 @@ from ctypes.wintypes import LPCSTR
 from ctypes.wintypes import HKEY
 from ctypes.wintypes import BYTE
 import six
+from win32file import CreateFile, CloseHandle, ReadFile, WriteFile
+from win32file import FILE_GENERIC_READ, FILE_GENERIC_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL
 import wmi
 
 import pyxs.connection
+from pyxs._internal import Op, Packet, NUL
 
 from .exceptions import GPLPVDeviceOpenError, GPLPVDriverError
 
@@ -24,13 +30,62 @@ sys.coinit_flags = 0
 _winDevicePath = None
 
 
-class XenBusConnectionWinGPLPV(pyxs.connection.PacketConnection):
+class XenBusConnectionGPLPV(pyxs.connection.PacketConnection):
+    """
+    A pyxs.PacketConnection which communicates with xenstore over the PCI
+    device exposed by the GPLPV drivers on Windows. The interface of this
+    driver is very similar to the ones on Linux (direct reads/writes to a
+    file-like object) so we reuse most of the PacketConnection class and leave
+    the implementation detail to the XenBusTransportGPLPV.
+    """
+
+    def create_transport(self):
+        """
+        Initialises a new instance of XenBusTransportGPLPV to communicate with
+        xenstore using the GPLPV drivers on Windows.
+        """
+        return XenBusTransportGPLPV()
+
+    def recv(self):
+        """
+        This version of recv simply wraps the version from the superclass to
+        ensure that a second recv on the XenBusTransportGPLPV is performed
+        even for packets where no data actually needed to be read from
+        xenstore. Because the read is of 0 length no actual access to the
+        device will be performed but the sends and recvs will tally up
+        correctly which is important to ensure we do not cause a deadlock when
+        reading the file.
+        """
+        packet = super(XenBusConnectionGPLPV, self).recv()
+        if not packet.payload:
+            self.transport.recv(0)
+        return packet
+
+
+class XenBusTransportGPLPV(object):
+    """
+    A transport for pyxs which communicates with xenstore using the PCI device
+    exposed by the GPLPV drivers for Windows. The PCI device is a file-like
+    object which can only be written to/read from using Windows APIs. Despite
+    the alternate APIs the goal is to keep things as similar as possible to the
+    equivalent transports in pyxs. The major limitation preventing this is that
+    it is not possible to use select on the file-like objects used here (as
+    select on Windows can only be used on sockets) so a less-optimal way
+    involving a socketpair has been used instead.
+    """
+
     def __init__(self):
         global _winDevicePath
 
-        super(XenBusConnectionWinGPLPV, self).__init__()
+        self._logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
         self.fd = None
+        self.notify = False
+
+        # A socket pair which can be used to mimic the default pyxs behaviour
+        # of returning a fileno which can be slected on to check when data is
+        # available
+        self.r_terminator, self.w_terminator = socket.socketpair()
 
         # Once the windows device path is learned once reuse it otherwise
         # ctypes.POINTER() for the same structure leaks memory. Although
@@ -38,6 +93,7 @@ class XenBusConnectionWinGPLPV(pyxs.connection.PacketConnection):
         # at the internals of ctypes which doesn't seem to be a good idea.
         if _winDevicePath:
             self.path = _winDevicePath
+            self._open_device()
             return
 
         # Determine self.path using some magic Windows code which is derived
@@ -171,25 +227,71 @@ class XenBusConnectionWinGPLPV(pyxs.connection.PacketConnection):
 
         _winDevicePath = self.path
 
-    def __copy__(self):
-        return self.__class__()
+        self._open_device()
 
-    def connect(self):
-        if self.fd:
-            return
-
+    def _open_device(self):
         try:
-            self.fd = osnmopen(self.path)
+            # CreateFile(path, FILE_GENERIC_READ|FILE_GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+            # http://docs.activestate.com/activepython/2.7/pywin32/win32file__CreateFile_meth.html
+            # PyHANDLE = CreateFile(fileName, desiredAccess , shareMode , attributes , CreationDisposition , flagsAndAttributes , hTemplateFile )
+            self.fd = CreateFile(self.path, FILE_GENERIC_READ|FILE_GENERIC_WRITE, 0, None, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None)
         except Exception as exc:
+            self._logger.exception('Exception opening GPLPV device:')
             six.raise_from(GPLPVDeviceOpenError("Error while opening {0!r}".format(self.path)), exc)
 
-    @property
-    def is_connected(self):
-        return self.fd is not None
-
     def fileno(self):
-        return self.fd
+        return self.r_terminator.fileno()
 
     def close(self, silent=True):
-        osnmclose(self.fd)
+        # http://docs.activestate.com/activepython/2.7/pywin32/win32file__CloseHandle_meth.html
+        # CloseHandle(handle)
+        CloseHandle(self.fd)
         self.fd = None
+
+        self.r_terminator.shutdown(socket.SHUT_RDWR)
+
+        self.r_terminator.close()
+        self.w_terminator.close()
+
+    def recv(self, size):
+        self._logger.debug('recv: %d', size)
+
+        chunks = []
+        while size:
+            # ReadFile(handle, buf, 1024, &bytes_read, NULL)
+            # http://docs.activestate.com/activepython/2.7/pywin32/win32file__ReadFile_meth.html
+            # (int, string) = ReadFile(hFile, buffer/bufSize , ol )
+            (err, read) = ReadFile(self.fd, size, None)
+            if err:
+                raise OSError(err)
+
+            chunks.append(read)
+            size -= len(read)
+
+        received = 0
+        while received < 1:
+            data = self.r_terminator.recv(1)
+            received += len(data)
+        self._logger.debug('recv: read 1 byte from socket, returning data')
+
+        return b"".join(chunks)
+
+    def send(self, data):
+        self._logger.debug('send: %d', len(data))
+
+        size = len(data)
+        while size:
+            # WriteFile(handle, buf, sizeof(*msg) + msg->len, &bytes_written, NULL)
+            # http://docs.activestate.com/activepython/2.7/pywin32/win32file__WriteFile_meth.html
+            # int, int = WriteFile(hFile, data , ol )
+            errCode, lwrite = WriteFile(self.fd, data[-size:], None)
+            if errCode:
+                raise OSError(errCode)
+
+            size -= lwrite
+
+        if self.notify:
+            self._logger.debug('send: notifying router')
+            self.w_terminator.sendall(NUL + NUL)
+
+        self.notify = not self.notify

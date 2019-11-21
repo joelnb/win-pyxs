@@ -5,16 +5,41 @@ current VM.
 
 from __future__ import print_function
 
+import logging
 from pprint import pprint
 
 import pyxs
 
 from win_pyxs import XenBusConnectionWinPV
-from win_pyxs.gplpv import XenBusConnectionWinGPLPV
+from win_pyxs.gplpv import XenBusConnectionGPLPV
+
+
+def _basic_logger_init(logger, verbose=False):
+    """
+    Setup a logger to output to the stderr stream.
+
+    :param logger: The logger to setup.
+    :param verbose: If True the logger & formatter will be set to DEBUG level.
+    """
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s: %(message)s')
+    handler.setFormatter(formatter)
+
+    log_level = logging.INFO
+    if verbose:
+        log_level = logging.DEBUG
+
+    logger.setLevel(log_level)
+    handler.setLevel(log_level)
+
+    logger.addHandler(handler)
 
 
 def _main():
-    con = XenBusConnectionWinGPLPV()
+    logger = logging.getLogger('win_pyxs')
+    _basic_logger_init(logger, verbose=True)
+
+    con = XenBusConnectionGPLPV()
     router = pyxs.Router(con)
     with pyxs.Client(router=router) as client:
         my_uuid = client.read("vm")
@@ -23,13 +48,14 @@ def _main():
         print('My DomID:', my_domid)
         my_mac = client.read("device/vif/0/mac")
         print('My MAC:  ', my_mac)
-        first = True
+        caption, first = 'Drivers: ', True
         for driver in client.list("drivers"):
-            caption = '         '
             if first:
-                caption = 'Drivers: '
                 first = False
             print(caption, client.read(driver))
+            caption = '         '
+        if first:
+            print(caption, 'GPLPV (None in xenstore)')
         print('My Home:')
         pprint(client.list("/local/domain/{}".format(my_domid)))
 

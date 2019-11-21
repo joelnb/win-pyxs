@@ -220,6 +220,8 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         self.session = None
         pythoncom.CoUninitialize()
 
+        self.r_terminator.shutdown(socket.SHUT_RDWR)
+
         self.r_terminator.close()
         self.w_terminator.close()
 
