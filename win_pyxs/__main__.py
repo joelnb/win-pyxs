@@ -8,10 +8,12 @@ from __future__ import print_function
 import logging
 from pprint import pprint
 
+import six
+
 import pyxs
 
-from win_pyxs import XenBusConnectionWinPV
-from win_pyxs.gplpv import XenBusConnectionGPLPV
+from win_pyxs import XenBusConnectionWinPV, XenBusConnectionGPLPV
+from win_pyxs.exceptions import GPLPVDeviceOpenError, GPLPVDriverError
 
 
 def _basic_logger_init(logger, verbose=False):
@@ -39,7 +41,16 @@ def _main():
     logger = logging.getLogger('win_pyxs')
     _basic_logger_init(logger, verbose=True)
 
-    con = XenBusConnectionGPLPV()
+    try:
+        con = XenBusConnectionGPLPV()
+        logger.info('Using XenBusConnectionGPLPV')
+    except (GPLPVDeviceOpenError, GPLPVDriverError) as gplpv_exc:
+        try:
+            con = XenBusConnectionWinPV()
+            logger.info('Using XenBusConnectionWinPV')
+        except Exception as winpv_exc:
+            six.raise_from(winpv_exc, gplpv_exc)
+
     router = pyxs.Router(con)
     with pyxs.Client(router=router) as client:
         my_uuid = client.read("vm")

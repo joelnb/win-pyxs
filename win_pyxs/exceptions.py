@@ -4,6 +4,11 @@ pyxs.PyXSError so that they will be caught along with normal exceptions from
 pyxs.
 """
 
+__all__ = [
+    'WinPyXSError', 'UnknownSessionError', 'GPLPVDeviceOpenError',
+    'GPLPVDriverError',
+]
+
 from pyxs import PyXSError
 
 

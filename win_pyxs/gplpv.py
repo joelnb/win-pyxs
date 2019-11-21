@@ -1,3 +1,13 @@
+"""
+win_pyxs.gplpv contains an implementation of a pyxs.connection.PacketConnection
+which sends the packets over the PCI device exposed by the GPLPV drivers for
+Windows.
+"""
+
+from __future__ import print_function
+
+__all__ = ['XenBusConnectionGPLPV']
+
 import ctypes
 from ctypes.wintypes import HANDLE
 from ctypes.wintypes import BOOL
@@ -11,7 +21,6 @@ from ctypes.wintypes import HKEY
 from ctypes.wintypes import BYTE
 import logging
 import socket
-import sys
 
 import backports.socketpair
 import six
@@ -24,8 +33,6 @@ import pyxs.connection
 from pyxs._internal import NUL
 
 from .exceptions import GPLPVDeviceOpenError, GPLPVDriverError
-
-sys.coinit_flags = 0
 
 _winDevicePath = None
 
