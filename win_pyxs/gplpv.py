@@ -1,9 +1,3 @@
-import logging
-import os
-import socket
-import sys
-
-import backports.socketpair
 import ctypes
 from ctypes.wintypes import HANDLE
 from ctypes.wintypes import BOOL
@@ -15,13 +9,19 @@ from ctypes.wintypes import ULONG
 from ctypes.wintypes import LPCSTR
 from ctypes.wintypes import HKEY
 from ctypes.wintypes import BYTE
+import logging
+import socket
+import sys
+
+import backports.socketpair
 import six
 from win32file import CreateFile, CloseHandle, ReadFile, WriteFile
-from win32file import FILE_GENERIC_READ, FILE_GENERIC_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL
-import wmi
+from win32file import (
+    FILE_GENERIC_READ, FILE_GENERIC_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL
+)
 
 import pyxs.connection
-from pyxs._internal import Op, Packet, NUL
+from pyxs._internal import NUL
 
 from .exceptions import GPLPVDeviceOpenError, GPLPVDriverError
 
@@ -77,7 +77,9 @@ class XenBusTransportGPLPV(object):
     def __init__(self):
         global _winDevicePath
 
-        self._logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+        self._logger = logging.getLogger(
+            __name__ + '.' + self.__class__.__name__
+        )
 
         self.fd = None
         self.notify = False
@@ -152,7 +154,9 @@ class XenBusTransportGPLPV(object):
             ]
 
             def __str__(self):
-                return "ClassGuid:%s DevInst:%s" % (self.ClassGuid, self.DevInst)
+                return "ClassGuid:%s DevInst:%s" % (
+                    self.ClassGuid, self.DevInst
+                )
 
         PSP_DEVINFO_DATA = ctypes.POINTER(SP_DEVINFO_DATA)
 
@@ -165,7 +169,9 @@ class XenBusTransportGPLPV(object):
             ]
 
             def __str__(self):
-                return "InterfaceClassGuid:%s Flags:%s" % (self.InterfaceClassGuid, self.Flags)
+                return "InterfaceClassGuid:%s Flags:%s" % (
+                    self.InterfaceClassGuid, self.Flags
+                )
 
         PSP_DEVICE_INTERFACE_DATA = ctypes.POINTER(SP_DEVICE_INTERFACE_DATA)
         PSP_DEVICE_INTERFACE_DETAIL_DATA = ctypes.c_void_p
@@ -179,11 +185,17 @@ class XenBusTransportGPLPV(object):
         SetupDiGetClassDevs.errcheck = ValidHandle
 
         SetupDiEnumDeviceInterfaces = setupapi.SetupDiEnumDeviceInterfaces
-        SetupDiEnumDeviceInterfaces.argtypes = [HDEVINFO, PSP_DEVINFO_DATA, PGUID, DWORD, PSP_DEVICE_INTERFACE_DATA]
+        SetupDiEnumDeviceInterfaces.argtypes = [
+            HDEVINFO, PSP_DEVINFO_DATA, PGUID, DWORD, PSP_DEVICE_INTERFACE_DATA
+        ]
         SetupDiEnumDeviceInterfaces.restype = BOOL
 
-        SetupDiGetDeviceInterfaceDetail = setupapi.SetupDiGetDeviceInterfaceDetailA
-        SetupDiGetDeviceInterfaceDetail.argtypes = [HDEVINFO, PSP_DEVICE_INTERFACE_DATA, PSP_DEVICE_INTERFACE_DETAIL_DATA, DWORD, PDWORD, PSP_DEVINFO_DATA]
+        SetupDiGetDeviceInterfaceDetail = \
+            setupapi.SetupDiGetDeviceInterfaceDetailA
+        SetupDiGetDeviceInterfaceDetail.argtypes = [
+            HDEVINFO, PSP_DEVICE_INTERFACE_DATA,
+            PSP_DEVICE_INTERFACE_DETAIL_DATA, DWORD, PDWORD, PSP_DEVINFO_DATA
+        ]
         SetupDiGetDeviceInterfaceDetail.restype = BOOL
 
         SetupDiDestroyDeviceInfoList = setupapi.SetupDiDestroyDeviceInfoList
@@ -191,34 +203,51 @@ class XenBusTransportGPLPV(object):
         SetupDiDestroyDeviceInfoList.restype = BOOL
 
         # Do stuff
-        GUID_XENBUS_IFACE = GUID(0x14ce175aL, 0x3ee2, 0x4fae, (BYTE * 8)(0x92, 0x52, 0x0, 0xdb, 0xd8, 0x4f, 0x1, 0x8e))
+        GUID_XENBUS_IFACE = GUID(
+            0x14ce175a, 0x3ee2, 0x4fae,
+            (BYTE * 8)(0x92, 0x52, 0x0, 0xdb, 0xd8, 0x4f, 0x1, 0x8e)
+        )
 
-        handle = SetupDiGetClassDevs(ctypes.byref(GUID_XENBUS_IFACE), NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+        handle = SetupDiGetClassDevs(
+            ctypes.byref(GUID_XENBUS_IFACE), NULL, NULL,
+            DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
+        )
 
         sdid = SP_DEVICE_INTERFACE_DATA()
         sdid.cbSize = ctypes.sizeof(sdid)
-        if not SetupDiEnumDeviceInterfaces(handle, NULL, ctypes.byref(GUID_XENBUS_IFACE), 0, ctypes.byref(sdid)):
+        if not SetupDiEnumDeviceInterfaces(
+            handle, NULL, ctypes.byref(GUID_XENBUS_IFACE), 0,
+            ctypes.byref(sdid)
+        ):
             if ctypes.GetLastError() != ERROR_NO_MORE_ITEMS:
-                    raise GPLPVDriverError(str(ctypes.WinError()))
+                raise GPLPVDriverError(str(ctypes.WinError()))
 
         buf_len = DWORD()
-        if not SetupDiGetDeviceInterfaceDetail(handle, ctypes.byref(sdid), NULL, 0, ctypes.byref(buf_len), NULL):
+        if not SetupDiGetDeviceInterfaceDetail(
+            handle, ctypes.byref(sdid), NULL, 0, ctypes.byref(buf_len), NULL
+        ):
             if ctypes.GetLastError() != ERROR_INSUFFICIENT_BUFFER:
                 raise GPLPVDriverError(str(ctypes.WinError()))
 
-        # We didn't know how big to make the structure until buf_len is assigned...
+        # We didn't know how big to make the structure until buf_len is
+        # assigned...
         class SP_DEVICE_INTERFACE_DETAIL_DATA_A(ctypes.Structure):
             _fields_ = [
                 ('cbSize', DWORD),
-                ('DevicePath', CHAR*(buf_len.value - ctypes.sizeof(DWORD))),
+                ('DevicePath', CHAR * (buf_len.value - ctypes.sizeof(DWORD))),
             ]
 
             def __str__(self):
-                return "DevicePath:%s" % (self.DevicePath,)
+                return "DevicePath:%s" % (self.DevicePath, )
 
         sdidd = SP_DEVICE_INTERFACE_DETAIL_DATA_A()
-        sdidd.cbSize = ctypes.sizeof(ctypes.POINTER(SP_DEVICE_INTERFACE_DETAIL_DATA_A))
-        if not SetupDiGetDeviceInterfaceDetail(handle, ctypes.byref(sdid), ctypes.byref(sdidd), buf_len, NULL, NULL):
+        sdidd.cbSize = ctypes.sizeof(
+            ctypes.POINTER(SP_DEVICE_INTERFACE_DETAIL_DATA_A)
+        )
+        if not SetupDiGetDeviceInterfaceDetail(
+            handle, ctypes.byref(sdid), ctypes.byref(sdidd), buf_len, NULL,
+            NULL
+        ):
             raise GPLPVDriverError(str(ctypes.WinError()))
 
         self.path = "" + sdidd.DevicePath
@@ -231,20 +260,22 @@ class XenBusTransportGPLPV(object):
 
     def _open_device(self):
         try:
-            # CreateFile(path, FILE_GENERIC_READ|FILE_GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-            # http://docs.activestate.com/activepython/2.7/pywin32/win32file__CreateFile_meth.html
-            # PyHANDLE = CreateFile(fileName, desiredAccess , shareMode , attributes , CreationDisposition , flagsAndAttributes , hTemplateFile )
-            self.fd = CreateFile(self.path, FILE_GENERIC_READ|FILE_GENERIC_WRITE, 0, None, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None)
+            self.fd = CreateFile(
+                self.path, FILE_GENERIC_READ | FILE_GENERIC_WRITE, 0, None,
+                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None
+            )
         except Exception as exc:
             self._logger.exception('Exception opening GPLPV device:')
-            six.raise_from(GPLPVDeviceOpenError("Error while opening {0!r}".format(self.path)), exc)
+            six.raise_from(
+                GPLPVDeviceOpenError(
+                    "Error while opening {0!r}".format(self.path)
+                ), exc
+            )
 
     def fileno(self):
         return self.r_terminator.fileno()
 
     def close(self, silent=True):
-        # http://docs.activestate.com/activepython/2.7/pywin32/win32file__CloseHandle_meth.html
-        # CloseHandle(handle)
         CloseHandle(self.fd)
         self.fd = None
 
@@ -258,9 +289,6 @@ class XenBusTransportGPLPV(object):
 
         chunks = []
         while size:
-            # ReadFile(handle, buf, 1024, &bytes_read, NULL)
-            # http://docs.activestate.com/activepython/2.7/pywin32/win32file__ReadFile_meth.html
-            # (int, string) = ReadFile(hFile, buffer/bufSize , ol )
             (err, read) = ReadFile(self.fd, size, None)
             if err:
                 raise OSError(err)
@@ -281,12 +309,9 @@ class XenBusTransportGPLPV(object):
 
         size = len(data)
         while size:
-            # WriteFile(handle, buf, sizeof(*msg) + msg->len, &bytes_written, NULL)
-            # http://docs.activestate.com/activepython/2.7/pywin32/win32file__WriteFile_meth.html
-            # int, int = WriteFile(hFile, data , ol )
-            errCode, lwrite = WriteFile(self.fd, data[-size:], None)
-            if errCode:
-                raise OSError(errCode)
+            err, lwrite = WriteFile(self.fd, data[-size:], None)
+            if err:
+                raise OSError(err)
 
             size -= lwrite
 
