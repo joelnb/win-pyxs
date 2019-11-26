@@ -9,6 +9,7 @@ from __future__ import print_function
 
 __all__ = ['XenBusConnectionWinPV']
 
+import logging
 import socket
 import sys
 from time import sleep
@@ -44,6 +45,10 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
     def __init__(self, xs_session_name="PyxsSession"):
         super(XenBusConnectionWinPV, self).__init__()
 
+        self._logger = logging.getLogger(
+            __name__ + '.' + self.__class__.__name__
+        )
+
         self.session = None
         self.session_id = None
         self.session_name = xs_session_name
@@ -62,16 +67,22 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
             xenstore_base = wmi_session.XenProjectXenStoreBase()[0]
         except Exception as exc:  # WMI can raise all sorts of exceptions
             if wmi_connect_retry > 0:
+                self._logger.error(
+                    'Error connecting to WMI (will retry): %s', exc
+                )
+
                 sleep(WMI_CONNECT_RETRY_DELAY)
                 return self._get_xenstore_session(
                     wmi_connect_retry=(wmi_connect_retry - 1)
                 )
 
+            self._logger.exception('Failed connecting to WMI:')
             six.raise_from(
                 pyxs.PyXSError("Initialising WMI connection failed"), exc
             )
 
         if self.session_id is None:
+            self._logger.debug('Adding a new XenProjectXenStoreSession')
             self.session_id = xenstore_base.AddSession(Id=self.session_name)[0]
 
         wmi_query = (
@@ -82,10 +93,20 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         try:
             sessions = wmi_session.query(wmi_query)
         except Exception:
+            self._logger.warning((
+                'Failed finding the XenProjectXenStoreSession with '
+                'SessionId=%s (will retry)'
+            ), self.session_id)
             sleep(WMI_QUERY_RETRY_DELAY)
+
             try:
                 sessions = wmi_session.query(wmi_query)
             except Exception as exc:
+                self._logger.exception((
+                    'Failed finding the XenProjectXenStoreSession with '
+                    'SessionId=%s:'
+                ), self.session_id)
+
                 six.raise_from(
                     pyxs.PyXSError("Unable to query for WMI session"), exc
                 )
@@ -149,9 +170,14 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         """
         try:
             if not self.session:
+                self._logger.debug(
+                    'Attempt to send without a connection - connecting now'
+                )
                 self.connect()
         except wmi.x_wmi as exc:
             six.raise_from(pyxs.PyXSError, exc)
+
+        self._logger.debug('Sending packet to xenstore: %s', packet)
 
         if packet.op == Op.READ:
             try:
@@ -190,7 +216,7 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
 
             result = "\x00".join(result)
         else:
-            raise Exception(
+            raise NotImplementedError(
                 "Unsupported XenStore Action ({x})".format(x=packet.op)
             )
 
@@ -216,12 +242,16 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         Close the sockets used to notify pyxs when data is ready & cleanup the
         WMI session used to query xenstore.
         """
+        self._logger.debug('Closing XenProjectXenStoreSession using WMI')
         pythoncom.CoInitialize()
         session = self._get_xenstore_session()
         session.EndSession()
         self.session = None
         pythoncom.CoUninitialize()
 
+        self._logger.debug(
+            'Shutting down socket used to notify Router of readiness'
+        )
         self.r_terminator.shutdown(socket.SHUT_RDWR)
 
         self.r_terminator.close()
