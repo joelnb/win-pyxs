@@ -1,0 +1,27 @@
+name: Publish to PyPI
+
+on: [push]
+
+jobs:
+  publish:
+    name: Publish on python ${{ matrix.python-version }}
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+    runs-on: windows-latest
+    strategy:
+      max-parallel: 5
+      matrix:
+        python-version: [3.8]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build packages
+        run: |
+          python setup.py sdist bdist_wheel
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.pypi_password }}

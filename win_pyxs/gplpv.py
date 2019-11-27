@@ -17,6 +17,9 @@ from ctypes.wintypes import ULONG
 from ctypes.wintypes import BYTE
 import logging
 import socket
+import sys
+
+sys.coinit_flags = 0
 
 import backports.socketpair  # pylint: disable=W0611
 import six
@@ -42,7 +45,7 @@ class XenBusConnectionGPLPV(pyxs.connection.PacketConnection):
     the implementation detail to the XenBusTransportGPLPV.
     """
 
-    def create_transport(self):     # pylint disable=R0201
+    def create_transport(self):  # pylint disable=R0201
         """
         Initialises a new instance of XenBusTransportGPLPV to communicate with
         xenstore using the GPLPV drivers on Windows.
@@ -98,9 +101,17 @@ class XenBusTransportGPLPV(object):
         # at the internals of ctypes which doesn't seem to be a good idea.
         if _WIN_DEVICE_PATH:
             self.path = _WIN_DEVICE_PATH
-            self._open_device()
-            return
+            self._logger.debug(
+                'Reused already-discovered device path: %s', self.path
+            )
+        else:
+            self.path = self._get_device_path()
+            _WIN_DEVICE_PATH = self.path
+            self._logger.debug('Discovered device path: %s', self.path)
 
+        self._open_device()
+
+    def _get_device_path(self):
         # Determine self.path using some magic Windows code which is derived
         # from:
         #   http://pydoc.net/Python/pyserial/2.6/serial.tools.list_ports_windows/.
@@ -253,13 +264,11 @@ class XenBusTransportGPLPV(object):
         ):
             raise GPLPVDriverError(str(ctypes.WinError()))
 
-        self.path = "" + sdidd.DevicePath
+        path = "" + sdidd.DevicePath
 
         SetupDiDestroyDeviceInfoList(handle)
 
-        _WIN_DEVICE_PATH = self.path
-
-        self._open_device()
+        return path
 
     def _open_device(self):
         try:
@@ -278,7 +287,7 @@ class XenBusTransportGPLPV(object):
     def fileno(self):
         return self.r_terminator.fileno()
 
-    def close(self, silent=True):   # pylint disable=W0613
+    def close(self, silent=True):  # pylint disable=W0613
         CloseHandle(self.fd)
         self.fd = None
 
