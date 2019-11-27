@@ -287,6 +287,8 @@ class XenBusTransportGPLPV(object):
         self.r_terminator.close()
         self.w_terminator.close()
 
+        self.r_terminator = self.w_terminator = None
+
     def recv(self, size):
         self._logger.debug('recv: %d', size)
 
