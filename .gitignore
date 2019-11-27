@@ -10,3 +10,6 @@ __pycache__/
 
 # Setuptools cached eggs
 .eggs/
+
+# Sphinx build
+docs/_build/
