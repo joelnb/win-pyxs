@@ -19,6 +19,8 @@ try:
 except ImportError:
     from queue import Queue
 
+sys.coinit_flags = 0
+
 import backports.socketpair  # pylint: disable=W0611
 import pythoncom
 import six
@@ -29,8 +31,6 @@ import pyxs.connection
 from pyxs._internal import Op, Packet, NUL
 
 from .exceptions import UnknownSessionError
-
-sys.coinit_flags = 0
 
 WMI_CONNECT_RETRY_DELAY = 2
 WMI_QUERY_RETRY_DELAY = 0.5
