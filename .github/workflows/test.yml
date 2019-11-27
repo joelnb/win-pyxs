@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Test on node python ${{ matrix.node_version }}
+    name: Test on python ${{ matrix.python-version }}
     runs-on: windows-latest
     strategy:
       max-parallel: 5
