@@ -34,6 +34,9 @@ sys.coinit_flags = 0
 
 WMI_CONNECT_RETRY_DELAY = 2
 WMI_QUERY_RETRY_DELAY = 0.5
+WMI_QUERY_TEMPLATE = (
+    "select * from XenProjectXenStoreSession where SessionId = {id}"
+)
 
 
 class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
@@ -85,10 +88,7 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
             self._logger.debug('Adding a new XenProjectXenStoreSession')
             self.session_id = xenstore_base.AddSession(Id=self.session_name)[0]
 
-        wmi_query = (
-            "select * from XenProjectXenStoreSession where SessionId"
-            " = {id}"
-        ).format(id=self.session_id)
+        wmi_query = WMI_QUERY_TEMPLATE.format(id=self.session_id)
 
         try:
             sessions = wmi_session.query(wmi_query)
@@ -237,7 +237,7 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         self.r_terminator.recv(1)
         return self.response_packets.get(False)
 
-    def close(self, silent=True):   # pylint disable=W0613
+    def close(self, silent=True):  # pylint disable=W0613
         """
         Close the sockets used to notify pyxs when data is ready & cleanup the
         WMI session used to query xenstore.

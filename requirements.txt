@@ -1,2 +1,8 @@
+backports.socketpair
+mock
+pywin32
+pyxs
+six
 wheel
+WMI
 yapf
