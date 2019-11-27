@@ -211,7 +211,7 @@ class XenBusConnectionWinPV(pyxs.connection.PacketConnection):
         self.r_terminator.recv(1)
         return self.response_packets.get(False)
 
-    def close(self, silent=True):
+    def close(self, silent=True):   # pylint disable=W0613
         """
         Close the sockets used to notify pyxs when data is ready & cleanup the
         WMI session used to query xenstore.
