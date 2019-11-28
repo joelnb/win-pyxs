@@ -1,6 +1,6 @@
 """
-This module contains utility functions used by win_pyxs which should not be
-needed by any client code & are only intended for internal use.
+This module contains utility code used by win_pyxs which should not be
+needed by any client code & is only intended for internal use.
 """
 
 
