@@ -21,7 +21,6 @@ import sys
 
 sys.coinit_flags = 0
 
-import backports.socketpair  # pylint: disable=W0611
 import six
 from win32file import CreateFile, CloseHandle, ReadFile, WriteFile
 from win32file import (

@@ -1,4 +1,3 @@
-backports.socketpair
 mock
 pywin32
 pyxs

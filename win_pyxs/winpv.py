@@ -21,7 +21,6 @@ except ImportError:
 
 sys.coinit_flags = 0
 
-import backports.socketpair  # pylint: disable=W0611
 import pythoncom
 import six
 import wmi
